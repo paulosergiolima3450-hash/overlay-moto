@@ -607,16 +607,6 @@ async function atualizarTela() {
     }
   }
 }
-    const d = await r.json();
-    saldoAtual = Number(d.valor || 0);
-    document.getElementById('v').textContent = formatarMoeda(saldoAtual);
-    document.getElementById('e').textContent = 'ENTREGAS: ' + Number(d.entregas || 0);
-    renderizarMeta();
-    statusMsg('ok', '🟢 Conectado!');
-  } catch {
-    statusMsg('erro', '⚠️ Sem conexão - tentando novamente...');
-  }
-}
 
 async function enviar(acao) {
   const raw = document.getElementById('campo').value.replace(',', '.').trim();

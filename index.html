@@ -549,15 +549,20 @@ function travarBotoes(estado) {
 
 async function atualizarTela() {
   try {
-    const r = await fetch(LINK, { redirect: 'follow' });
+    const sep = LINK.includes('?') ? '&' : '?';
+    const urlConsulta = `${LINK}${sep}t=${Date.now()}`;
+    const r = await fetch(urlConsulta, {
+      cache: 'no-store',
+      redirect: 'follow'
+    });
     const d = await r.json();
     saldoAtual = Number(d.valor || 0);
     document.getElementById('v').textContent = formatarMoeda(saldoAtual);
     document.getElementById('e').textContent = 'ENTREGAS: ' + Number(d.entregas || 0);
     renderizarMeta();
-    statusMsg('ok', '✅ Conectado!');
+    statusMsg('ok', '🟢 Conectado!');
   } catch {
-    statusMsg('erro', '⚠️ Sem conexão — tentando novamente...');
+    statusMsg('erro', '⚠️ Sem conexão - tentando novamente...');
   }
 }
 

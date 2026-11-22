@@ -68,8 +68,8 @@
     background: transparent;
     border: none;
     border-radius: 14px;
-    padding: 14px 16px 14px 128px;
-    min-height: 152px;
+    padding: 14px 128px 14px 16px;
+    min-height: 148px;
     overflow: visible;
   }
 
@@ -80,7 +80,7 @@
 
   .moto-cena {
     position: absolute;
-    left: 10px;
+    right: 10px;
     bottom: 10px;
     width: 108px;
     height: 92px;
@@ -313,7 +313,7 @@
 
   .valor-principal {
     font-family: 'Press Start 2P', monospace;
-    font-size: 24px;
+    font-size: 19px;
     color: #fef08a;
     margin-bottom: 8px;
     word-break: break-word;
@@ -542,147 +542,4 @@ if (isNaN(metaDia) || metaDia <= 0) metaDia = 200;
 let saldoAtual = 0;
 
 function formatarMoeda(num) {
-  return 'R$ ' + Number(num || 0).toFixed(2).replace('.', ',');
-}
-
-function renderizarMeta() {
-  document.getElementById('meta-label').textContent = 'META: ' + formatarMoeda(metaDia);
-  document.getElementById('meta-resumo').innerHTML = 'Meta do dia: <strong>' + formatarMoeda(metaDia) + '</strong>';
-  const pct = Math.max(0, Math.min(100, Math.round((saldoAtual / metaDia) * 100)));
-  document.getElementById('barra-meta').style.width = pct + '%';
-  document.getElementById('meta-pct').textContent = pct + '%';
-}
-
-function travarBotoes(estado) {
-  document.querySelectorAll('.painel-controle button').forEach(b => { b.disabled = estado; });
-}
-
-function aplicarDadosNaTela(d) {
-  saldoAtual = Number(d && d.valor ? d.valor : 0);
-  const entregas = Number(d && d.entregas ? d.entregas : 0);
-  document.getElementById('v').textContent = formatarMoeda(saldoAtual);
-  document.getElementById('e').textContent = 'ENTREGAS: ' + entregas;
-  renderizarMeta();
-  statusMsg('ok', '🟢 Conectado!');
-}
-
-function carregarViaJsonp(urlBase) {
-  return new Promise((resolve, reject) => {
-    const nomeCallback = 'cbOverlayMoto_' + Date.now() + '_' + Math.floor(Math.random() * 10000);
-    const scriptTag = document.createElement('script');
-    const sep = urlBase.includes('?') ? '&' : '?';
-
-    const timer = setTimeout(() => {
-      limpar();
-      reject(new Error('Timeout JSONP'));
-    }, 6000);
-
-    function limpar() {
-      clearTimeout(timer);
-      if (scriptTag.parentNode) scriptTag.parentNode.removeChild(scriptTag);
-      try { delete window[nomeCallback]; } catch { window[nomeCallback] = undefined; }
-    }
-
-    window[nomeCallback] = function(dados) {
-      limpar();
-      resolve(dados);
-    };
-
-    scriptTag.onerror = function() {
-      limpar();
-      reject(new Error('Erro ao carregar script JSONP'));
-    };
-
-    scriptTag.src = `${urlBase}${sep}callback=${nomeCallback}&t=${Date.now()}`;
-    document.body.appendChild(scriptTag);
-  });
-}
-
-async function atualizarTela() {
-  try {
-    const sep = LINK.includes('?') ? '&' : '?';
-    const urlConsulta = `${LINK}${sep}t=${Date.now()}`;
-    const r = await fetch(urlConsulta, {
-      cache: 'no-store',
-      redirect: 'follow'
-    });
-    const d = await r.json();
-    aplicarDadosNaTela(d);
-  } catch {
-    try {
-      const dadosJsonp = await carregarViaJsonp(LINK);
-      aplicarDadosNaTela(dadosJsonp);
-    } catch {
-      statusMsg('erro', '⚠️ Sem conexão - tentando novamente...');
-    }
-  }
-}
-
-async function enviar(acao) {
-  const raw = document.getElementById('campo').value.replace(',', '.').trim();
-  const val = parseFloat(raw);
-  if (isNaN(val) || val <= 0) {
-    statusMsg('erro', 'Digite um valor válido!');
-    return;
-  }
-  travarBotoes(true);
-  try {
-    const url = acao === 'subtrair'
-      ? `${LINK}?valor=${val}&acao=subtrair`
-      : `${LINK}?valor=${val}`;
-
-    await fetch(url, { mode: 'no-cors', redirect: 'follow' });
-    document.getElementById('campo').value = '';
-    setTimeout(atualizarTela, 1500);
-    statusMsg('ok', acao === 'subtrair'
-      ? `✅ Subtraído: ${formatarMoeda(val)}`
-      : `✅ Adicionado: ${formatarMoeda(val)}`);
-  } catch {
-    statusMsg('erro', '❌ Erro ao enviar');
-  } finally {
-    travarBotoes(false);
-  }
-}
-
-async function zerar() {
-  if (!confirm('Zerar tudo?')) return;
-  travarBotoes(true);
-  try {
-    await fetch(`${LINK}?acao=zerar`, { mode: 'no-cors', redirect: 'follow' });
-    setTimeout(atualizarTela, 1500);
-    statusMsg('ok', '✅ ZERADO!');
-  } catch {
-    statusMsg('erro', '❌ Erro ao zerar');
-  } finally {
-    travarBotoes(false);
-  }
-}
-
-function alterarMeta() {
-  const entrada = prompt('Digite a nova meta do dia (ex: 250 ou 250,00):', String(metaDia).replace('.', ','));
-  if (!entrada) return;
-  const parsed = parseFloat(entrada.replace(',', '.').trim());
-  if (isNaN(parsed) || parsed <= 0) {
-    statusMsg('erro', 'Meta inválida!');
-    return;
-  }
-  metaDia = parsed;
-  localStorage.setItem('meta_live_moto', String(metaDia));
-  renderizarMeta();
-  statusMsg('ok', `🎯 Meta atualizada para ${formatarMoeda(metaDia)}`);
-}
-
-function statusMsg(tipo, texto) {
-  const s = document.getElementById('status');
-  s.className = 'status-bar ' + tipo;
-  s.textContent = texto;
-  clearTimeout(window.t);
-  window.t = setTimeout(() => { s.style.display = 'none'; }, 3000);
-}
-
-renderizarMeta();
-atualizarTela();
-setInterval(atualizarTela, 4000);
-</script>
-</body>
-</html>
+  return '
